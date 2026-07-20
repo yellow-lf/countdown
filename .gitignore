@@ -1,0 +1,10 @@
+# Windows 系统垃圾文件
+Thumbs.db
+Desktop.ini
+
+# VS Code 编辑器配置（可选，如果你以后用VS Code打开这个文件夹）
+.vscode/
+
+# 临时文件
+*.tmp
+*.log

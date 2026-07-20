@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>5分钟倒计时</title>
+    <title>倒计时</title>
     <style>
         * {
             margin: 0;
@@ -24,14 +24,152 @@
             text-align: center;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 24px;
-            padding: 60px 50px;
+            padding: 40px 50px 50px;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 480px;
         }
 
+        /* ===== 时间设置区 ===== */
+        .time-settings {
+            margin-bottom: 24px;
+        }
+
+        .settings-label {
+            color: rgba(255, 255, 255, 0.45);
+            font-size: 12px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .presets {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+
+        .preset-btn {
+            padding: 6px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.75);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            letter-spacing: 0;
+            min-width: auto;
+        }
+
+        .preset-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.4);
+            color: #fff;
+        }
+
+        .preset-btn.active {
+            background: #4ecca3;
+            border-color: #4ecca3;
+            color: #1a1a2e;
+            font-weight: 600;
+        }
+
+        .custom-time {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .time-input {
+            width: 52px;
+            padding: 8px 6px;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            outline: none;
+            transition: border-color 0.2s ease;
+            font-family: inherit;
+        }
+
+        .time-input:focus {
+            border-color: #4ecca3;
+        }
+
+        .time-input:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .time-unit {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 13px;
+        }
+
+        .btn-apply {
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            letter-spacing: 0;
+            min-width: auto;
+            margin-left: 6px;
+        }
+
+        .btn-apply:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .btn-apply:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* ===== 进度环 ===== */
+        .progress-ring {
+            transform: rotate(-90deg);
+            margin-bottom: 20px;
+        }
+
+        .progress-ring__bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.1);
+            stroke-width: 8;
+        }
+
+        .progress-ring__fill {
+            fill: none;
+            stroke: #e94560;
+            stroke-width: 8;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.3s ease, stroke 0.3s ease;
+        }
+
+        .progress-ring__fill.warning {
+            stroke: #f5a623;
+        }
+
+        .progress-ring__fill.danger {
+            stroke: #e94560;
+        }
+
+        /* ===== 时间显示 ===== */
         .timer {
-            font-size: 120px;
+            font-size: 100px;
             font-weight: 700;
             color: #e94560;
             font-variant-numeric: tabular-nums;
@@ -58,33 +196,7 @@
             50% { opacity: 0.6; }
         }
 
-        .progress-ring {
-            transform: rotate(-90deg);
-            margin-bottom: 30px;
-        }
-
-        .progress-ring__bg {
-            fill: none;
-            stroke: rgba(255, 255, 255, 0.1);
-            stroke-width: 8;
-        }
-
-        .progress-ring__fill {
-            fill: none;
-            stroke: #e94560;
-            stroke-width: 8;
-            stroke-linecap: round;
-            transition: stroke-dashoffset 0.3s ease, stroke 0.3s ease;
-        }
-
-        .progress-ring__fill.warning {
-            stroke: #f5a623;
-        }
-
-        .progress-ring__fill.danger {
-            stroke: #e94560;
-        }
-
+        /* ===== 按钮 ===== */
         .buttons {
             display: flex;
             gap: 16px;
@@ -153,13 +265,35 @@
 </head>
 <body>
     <div class="container">
+        <!-- 时间设置区 -->
+        <div class="time-settings">
+            <div class="settings-label">设置倒计时间</div>
+            <div class="presets" id="presets">
+                <button class="preset-btn" data-minutes="1">1 分</button>
+                <button class="preset-btn active" data-minutes="5">5 分</button>
+                <button class="preset-btn" data-minutes="10">10 分</button>
+                <button class="preset-btn" data-minutes="15">15 分</button>
+                <button class="preset-btn" data-minutes="30">30 分</button>
+            </div>
+            <div class="custom-time">
+                <input class="time-input" id="inputMinutes" type="number" min="0" max="99" value="5" placeholder="分">
+                <span class="time-unit">分</span>
+                <input class="time-input" id="inputSeconds" type="number" min="0" max="59" value="0" placeholder="秒">
+                <span class="time-unit">秒</span>
+                <button class="btn-apply" id="btnApply" onclick="applyCustomTime()">设置</button>
+            </div>
+        </div>
+
+        <!-- 进度环 -->
         <svg class="progress-ring" width="220" height="220" viewBox="0 0 220 220">
             <circle class="progress-ring__bg" cx="110" cy="110" r="100" />
             <circle class="progress-ring__fill" cx="110" cy="110" r="100" id="progressCircle" />
         </svg>
 
+        <!-- 时间显示 -->
         <div class="timer" id="timerDisplay">05:00</div>
 
+        <!-- 控制按钮 -->
         <div class="buttons">
             <button class="btn-start" id="btnStart" onclick="startTimer()">开 始</button>
             <button class="btn-pause" id="btnPause" onclick="pauseTimer()" disabled>暂 停</button>
@@ -170,10 +304,10 @@
     </div>
 
     <script>
-        const TOTAL_SECONDS = 5 * 60; // 5分钟 = 300秒
         const CIRCUMFERENCE = 2 * Math.PI * 100; // 圆周长 ≈ 628.32
 
-        let remainingSeconds = TOTAL_SECONDS;
+        let totalSeconds = 5 * 60;   // 用户设定的总秒数（默认5分钟）
+        let remainingSeconds = totalSeconds;
         let timerInterval = null;
         let isRunning = false;
 
@@ -183,44 +317,102 @@
         const btnStart = document.getElementById('btnStart');
         const btnPause = document.getElementById('btnPause');
         const btnReset = document.getElementById('btnReset');
+        const btnApply = document.getElementById('btnApply');
         const statusText = document.getElementById('statusText');
+        const inputMinutes = document.getElementById('inputMinutes');
+        const inputSeconds = document.getElementById('inputSeconds');
+        const presetBtns = document.querySelectorAll('.preset-btn');
 
         // 初始化进度环
         progressCircle.style.strokeDasharray = CIRCUMFERENCE;
         progressCircle.style.strokeDashoffset = '0';
 
+        // ===== 格式化时间显示 =====
         function formatTime(seconds) {
             const min = Math.floor(seconds / 60);
             const sec = seconds % 60;
             return String(min).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
         }
 
+        // ===== 设置输入框的值 =====
+        function syncInputsToTotal() {
+            inputMinutes.value = Math.floor(totalSeconds / 60);
+            inputSeconds.value = totalSeconds % 60;
+        }
+
+        // ===== 更新预设按钮高亮 =====
+        function syncPresetHighlight() {
+            presetBtns.forEach(btn => {
+                const min = parseInt(btn.dataset.minutes);
+                // 如果当前总秒数刚好等于某个预设，就高亮它
+                if (totalSeconds === min * 60 && totalSeconds % 60 === 0) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // ===== 设置倒计时间 =====
+        function setTotalTime(seconds) {
+            totalSeconds = seconds;
+            remainingSeconds = seconds;
+            syncInputsToTotal();
+            syncPresetHighlight();
+            updateDisplay();
+        }
+
+        // ===== 预设按钮点击 =====
+        presetBtns.forEach(btn => {
+            btn.addEventListener('click', function () {
+                if (isRunning) return; // 运行中不允许修改
+                const minutes = parseInt(this.dataset.minutes);
+                setTotalTime(minutes * 60);
+            });
+        });
+
+        // ===== 自定义时间 =====
+        function applyCustomTime() {
+            if (isRunning) return;
+            const min = parseInt(inputMinutes.value) || 0;
+            const sec = parseInt(inputSeconds.value) || 0;
+            // 最少 1 秒
+            const total = Math.max(1, min * 60 + sec);
+            setTotalTime(total);
+        }
+
+        // ===== 更新显示 =====
         function updateDisplay() {
             timerDisplay.textContent = formatTime(remainingSeconds);
 
-            // 更新进度环
-            const progress = remainingSeconds / TOTAL_SECONDS;
+            // 更新进度环（基于当前设定的总时长）
+            const progress = remainingSeconds / totalSeconds;
             const offset = CIRCUMFERENCE * (1 - progress);
             progressCircle.style.strokeDashoffset = offset;
 
-            // 颜色状态
+            // 颜色状态：最后 20% 警告，最后 10% 紧急
             timerDisplay.classList.remove('warning', 'danger');
             progressCircle.classList.remove('warning', 'danger');
 
-            if (remainingSeconds <= 30) {
+            const dangerThreshold = Math.max(10, totalSeconds * 0.1);
+            const warningThreshold = Math.max(20, totalSeconds * 0.2);
+
+            if (remainingSeconds <= dangerThreshold) {
                 timerDisplay.classList.add('danger');
                 progressCircle.classList.add('danger');
-            } else if (remainingSeconds <= 60) {
+            } else if (remainingSeconds <= warningThreshold) {
                 timerDisplay.classList.add('warning');
                 progressCircle.classList.add('warning');
             }
         }
 
+        // ===== 开始 =====
         function startTimer() {
             if (isRunning) return;
             if (remainingSeconds <= 0) return;
 
             isRunning = true;
+            setInputsEnabled(false);
             btnStart.disabled = true;
             btnPause.disabled = false;
             statusText.textContent = '运行中';
@@ -236,27 +428,39 @@
             }, 1000);
         }
 
+        // ===== 暂停 =====
         function pauseTimer() {
             if (!isRunning) return;
             stopTimer();
             statusText.textContent = '已暂停';
         }
 
+        // ===== 停止计时器 =====
         function stopTimer() {
             isRunning = false;
             clearInterval(timerInterval);
             timerInterval = null;
             btnStart.disabled = remainingSeconds <= 0;
             btnPause.disabled = true;
+            setInputsEnabled(true);
         }
 
+        // ===== 重置 =====
         function resetTimer() {
             stopTimer();
-            remainingSeconds = TOTAL_SECONDS;
+            remainingSeconds = totalSeconds;
             updateDisplay();
             btnStart.disabled = false;
             btnPause.disabled = true;
             statusText.textContent = '就绪';
+        }
+
+        // ===== 时间设置区的启用/禁用 =====
+        function setInputsEnabled(enabled) {
+            presetBtns.forEach(b => b.disabled = !enabled);
+            inputMinutes.disabled = !enabled;
+            inputSeconds.disabled = !enabled;
+            btnApply.disabled = !enabled;
         }
     </script>
 </body>

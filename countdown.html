@@ -359,7 +359,6 @@
             nextDirection = { x: 1, y: 0 };
             snakeScore = 0;
             snakeScoreEl.textContent = '0';
-            btnSnake.textContent = '重新开始';
             spawnFood();
             drawSnake();
         }
@@ -380,9 +379,7 @@
         }
 
         function drawSnake() {
-            snakeCtx.clearRect(0, 0, snakeCanvas.width, snakeCanvas.height);
-
-            // 画背景网格
+            // 画背景
             snakeCtx.fillStyle = '#0d1b2a';
             snakeCtx.fillRect(0, 0, snakeCanvas.width, snakeCanvas.height);
 
@@ -435,7 +432,8 @@
 
         function snakeTick() {
             // 应用缓冲的方向
-            direction = { ...nextDirection };
+            direction.x = nextDirection.x;
+            direction.y = nextDirection.y;
 
             // 计算新蛇头位置
             const head = snake[0];
@@ -450,8 +448,10 @@
                 return;
             }
 
-            // 检查撞自己
-            if (snake.some(s => s.x === newHead.x && s.y === newHead.y)) {
+            // 检查撞自己（如果这帧不吃食物，尾巴会移走，排除尾巴）
+            const eating = food && newHead.x === food.x && newHead.y === food.y;
+            const bodyToCheck = eating ? snake : snake.slice(0, -1);
+            if (bodyToCheck.some(s => s.x === newHead.x && s.y === newHead.y)) {
                 gameOver();
                 return;
             }
@@ -460,10 +460,22 @@
             snake.unshift(newHead);
 
             // 检查是否吃到食物
-            if (food && newHead.x === food.x && newHead.y === food.y) {
+            if (eating) {
                 snakeScore++;
                 snakeScoreEl.textContent = snakeScore;
                 spawnFood();
+                if (!food) {
+                    // 网格已满，玩家获胜！
+                    stopSnake();
+                    snakeCtx.fillStyle = 'rgba(78, 204, 163, 0.2)';
+                    snakeCtx.fillRect(0, 0, snakeCanvas.width, snakeCanvas.height);
+                    snakeCtx.fillStyle = '#4ecca3';
+                    snakeCtx.font = 'bold 28px "Microsoft YaHei", sans-serif';
+                    snakeCtx.textAlign = 'center';
+                    snakeCtx.fillText('恭喜通关！', snakeCanvas.width / 2, snakeCanvas.height / 2);
+                    btnSnake.textContent = '再来一局';
+                    return;
+                }
                 // 食物被吃后不删尾巴 = 蛇变长
             } else {
                 snake.pop(); // 没吃到食物就删尾巴
@@ -482,7 +494,6 @@
             snakeCtx.textAlign = 'center';
             snakeCtx.fillText('游戏结束！', snakeCanvas.width / 2, snakeCanvas.height / 2);
             btnSnake.textContent = '重新开始';
-            snakeRunning = false;
         }
 
         function stopSnake() {
@@ -494,6 +505,7 @@
         function startSnakeGame() {
             stopSnake();
             initSnake();
+            btnSnake.textContent = '重新开始';
             snakeRunning = true;
             snakeInterval = setInterval(snakeTick, TICK_MS);
         }
@@ -502,32 +514,32 @@
         document.addEventListener('keydown', (e) => {
             if (!snakeRunning) return;
 
+            let handled = true;
             switch (e.key) {
                 case 'ArrowUp':
                 case 'w':
                 case 'W':
                     if (direction.y !== 1) nextDirection = { x: 0, y: -1 };
-                    e.preventDefault();
                     break;
                 case 'ArrowDown':
                 case 's':
                 case 'S':
                     if (direction.y !== -1) nextDirection = { x: 0, y: 1 };
-                    e.preventDefault();
                     break;
                 case 'ArrowLeft':
                 case 'a':
                 case 'A':
                     if (direction.x !== 1) nextDirection = { x: -1, y: 0 };
-                    e.preventDefault();
                     break;
                 case 'ArrowRight':
                 case 'd':
                 case 'D':
                     if (direction.x !== -1) nextDirection = { x: 1, y: 0 };
-                    e.preventDefault();
                     break;
+                default:
+                    handled = false;
             }
+            if (handled) e.preventDefault();
         });
 
         // 初始画出静止的蛇

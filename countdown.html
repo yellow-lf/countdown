@@ -149,6 +149,61 @@
             letter-spacing: 2px;
             text-transform: uppercase;
         }
+
+        /* ===== 贪吃蛇游戏样式 ===== */
+        .snake-section {
+            margin-top: 40px;
+            text-align: center;
+        }
+        .snake-title {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 20px;
+            margin-bottom: 12px;
+            letter-spacing: 2px;
+        }
+        .snake-wrapper {
+            display: inline-block;
+            background: #0d1b2a;
+            border-radius: 12px;
+            padding: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+        }
+        .snake-canvas {
+            display: block;
+            border-radius: 8px;
+        }
+        .snake-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 16px;
+        }
+        .snake-score {
+            color: #4ecca3;
+            font-weight: 700;
+            font-size: 18px;
+        }
+        .snake-hint {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 13px;
+        }
+        .btn-snake {
+            padding: 8px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #4ecca3;
+            color: #1a1a2e;
+            transition: all 0.25s ease;
+        }
+        .btn-snake:hover {
+            background: #5fe0b8;
+            box-shadow: 0 6px 20px rgba(78, 204, 163, 0.4);
+        }
     </style>
 </head>
 <body>
@@ -167,6 +222,19 @@
         </div>
 
         <div class="status" id="statusText">就绪</div>
+    </div>
+
+    <!-- 贪吃蛇游戏 -->
+    <div class="snake-section">
+        <div class="snake-title">🐍 贪吃蛇</div>
+        <div class="snake-wrapper">
+            <canvas class="snake-canvas" id="snakeCanvas" width="400" height="400"></canvas>
+            <div class="snake-info">
+                <span>得分：<span class="snake-score" id="snakeScore">0</span></span>
+                <button class="btn-snake" id="btnSnake" onclick="startSnakeGame()">开始游戏</button>
+            </div>
+        </div>
+        <div class="snake-hint">使用 ↑ ↓ ← → 方向键控制蛇的移动</div>
     </div>
 
     <script>
@@ -258,6 +326,213 @@
             btnPause.disabled = true;
             statusText.textContent = '就绪';
         }
+
+        // ===== 贪吃蛇游戏 =====
+        const snakeCanvas = document.getElementById('snakeCanvas');
+        const snakeCtx = snakeCanvas.getContext('2d');
+        const snakeScoreEl = document.getElementById('snakeScore');
+        const btnSnake = document.getElementById('btnSnake');
+
+        const GRID_SIZE = 20;        // 每格 20 像素
+        const GRID_COUNT = 20;       // 20×20 方格
+        const TICK_MS = 120;         // 蛇移动速度（毫秒）
+
+        let snake = [];              // 蛇的身体坐标数组
+        let food = null;             // 食物的坐标
+        let direction = null;        // 当前方向
+        let nextDirection = null;    // 缓冲的方向（防止快速按键bug）
+        let snakeInterval = null;
+        let snakeScore = 0;
+        let snakeRunning = false;
+
+        function initSnake() {
+            // 蛇初始位置：中间偏左，长度 4 格，向右移动
+            const startX = Math.floor(GRID_COUNT / 2);
+            const startY = Math.floor(GRID_COUNT / 2);
+            snake = [
+                { x: startX, y: startY },
+                { x: startX - 1, y: startY },
+                { x: startX - 2, y: startY },
+                { x: startX - 3, y: startY },
+            ];
+            direction = { x: 1, y: 0 };
+            nextDirection = { x: 1, y: 0 };
+            snakeScore = 0;
+            snakeScoreEl.textContent = '0';
+            btnSnake.textContent = '重新开始';
+            spawnFood();
+            drawSnake();
+        }
+
+        function spawnFood() {
+            // 随机找一个不在蛇身上的格子
+            const occupied = new Set(snake.map(s => `${s.x},${s.y}`));
+            const freeCells = [];
+            for (let x = 0; x < GRID_COUNT; x++) {
+                for (let y = 0; y < GRID_COUNT; y++) {
+                    if (!occupied.has(`${x},${y}`)) {
+                        freeCells.push({ x, y });
+                    }
+                }
+            }
+            if (freeCells.length === 0) return; // 蛇占满网格，胜利
+            food = freeCells[Math.floor(Math.random() * freeCells.length)];
+        }
+
+        function drawSnake() {
+            snakeCtx.clearRect(0, 0, snakeCanvas.width, snakeCanvas.height);
+
+            // 画背景网格
+            snakeCtx.fillStyle = '#0d1b2a';
+            snakeCtx.fillRect(0, 0, snakeCanvas.width, snakeCanvas.height);
+
+            // 画网格线
+            snakeCtx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+            snakeCtx.lineWidth = 0.5;
+            for (let i = 0; i <= GRID_COUNT; i++) {
+                snakeCtx.beginPath();
+                snakeCtx.moveTo(i * GRID_SIZE, 0);
+                snakeCtx.lineTo(i * GRID_SIZE, snakeCanvas.height);
+                snakeCtx.stroke();
+                snakeCtx.beginPath();
+                snakeCtx.moveTo(0, i * GRID_SIZE);
+                snakeCtx.lineTo(snakeCanvas.width, i * GRID_SIZE);
+                snakeCtx.stroke();
+            }
+
+            // 画食物
+            if (food) {
+                snakeCtx.fillStyle = '#e94560';
+                snakeCtx.shadowColor = 'rgba(233, 69, 96, 0.6)';
+                snakeCtx.shadowBlur = 8;
+                snakeCtx.beginPath();
+                snakeCtx.arc(
+                    food.x * GRID_SIZE + GRID_SIZE / 2,
+                    food.y * GRID_SIZE + GRID_SIZE / 2,
+                    GRID_SIZE / 2 - 1,
+                    0,
+                    Math.PI * 2
+                );
+                snakeCtx.fill();
+                snakeCtx.shadowBlur = 0;
+            }
+
+            // 画蛇身
+            snake.forEach((seg, i) => {
+                const alpha = i === 0 ? 1 : 0.7; // 蛇头更亮
+                snakeCtx.fillStyle = i === 0 ? '#4ecca3' : `rgba(78, 204, 163, ${alpha})`;
+                snakeCtx.shadowColor = i === 0 ? 'rgba(78, 204, 163, 0.5)' : 'transparent';
+                snakeCtx.shadowBlur = i === 0 ? 6 : 0;
+                snakeCtx.fillRect(
+                    seg.x * GRID_SIZE + 1,
+                    seg.y * GRID_SIZE + 1,
+                    GRID_SIZE - 2,
+                    GRID_SIZE - 2
+                );
+                snakeCtx.shadowBlur = 0;
+            });
+        }
+
+        function snakeTick() {
+            // 应用缓冲的方向
+            direction = { ...nextDirection };
+
+            // 计算新蛇头位置
+            const head = snake[0];
+            const newHead = {
+                x: head.x + direction.x,
+                y: head.y + direction.y,
+            };
+
+            // 检查撞墙
+            if (newHead.x < 0 || newHead.x >= GRID_COUNT || newHead.y < 0 || newHead.y >= GRID_COUNT) {
+                gameOver();
+                return;
+            }
+
+            // 检查撞自己
+            if (snake.some(s => s.x === newHead.x && s.y === newHead.y)) {
+                gameOver();
+                return;
+            }
+
+            // 蛇头前进
+            snake.unshift(newHead);
+
+            // 检查是否吃到食物
+            if (food && newHead.x === food.x && newHead.y === food.y) {
+                snakeScore++;
+                snakeScoreEl.textContent = snakeScore;
+                spawnFood();
+                // 食物被吃后不删尾巴 = 蛇变长
+            } else {
+                snake.pop(); // 没吃到食物就删尾巴
+            }
+
+            drawSnake();
+        }
+
+        function gameOver() {
+            stopSnake();
+            // 闪烁红色提示
+            snakeCtx.fillStyle = 'rgba(233, 69, 96, 0.2)';
+            snakeCtx.fillRect(0, 0, snakeCanvas.width, snakeCanvas.height);
+            snakeCtx.fillStyle = '#e94560';
+            snakeCtx.font = 'bold 28px "Microsoft YaHei", sans-serif';
+            snakeCtx.textAlign = 'center';
+            snakeCtx.fillText('游戏结束！', snakeCanvas.width / 2, snakeCanvas.height / 2);
+            btnSnake.textContent = '重新开始';
+            snakeRunning = false;
+        }
+
+        function stopSnake() {
+            clearInterval(snakeInterval);
+            snakeInterval = null;
+            snakeRunning = false;
+        }
+
+        function startSnakeGame() {
+            stopSnake();
+            initSnake();
+            snakeRunning = true;
+            snakeInterval = setInterval(snakeTick, TICK_MS);
+        }
+
+        // 键盘控制
+        document.addEventListener('keydown', (e) => {
+            if (!snakeRunning) return;
+
+            switch (e.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    if (direction.y !== 1) nextDirection = { x: 0, y: -1 };
+                    e.preventDefault();
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    if (direction.y !== -1) nextDirection = { x: 0, y: 1 };
+                    e.preventDefault();
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    if (direction.x !== 1) nextDirection = { x: -1, y: 0 };
+                    e.preventDefault();
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    if (direction.x !== -1) nextDirection = { x: 1, y: 0 };
+                    e.preventDefault();
+                    break;
+            }
+        });
+
+        // 初始画出静止的蛇
+        initSnake();
+        stopSnake(); // 确保计时器是停的，等用户点开始
     </script>
 </body>
 </html>

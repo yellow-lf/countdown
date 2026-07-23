@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-07-23T23:13:00+08:00",
+  "target": "countdown/testhook.txt",
+  "type": "text_file",
+  "result": {
+    "passed": true,
+    "total_tests": 0,
+    "passed_tests": 0,
+    "failed_tests": 0,
+    "skipped": true,
+    "reason": "目标文件为纯文本文件（.txt），无可执行单元测试，自动通过。"
+  },
+  "failures": []
+}

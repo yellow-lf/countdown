@@ -216,9 +216,9 @@
         <div class="timer" id="timerDisplay">05:00</div>
 
         <div class="buttons">
-            <button class="btn-start" id="btnStart" onclick="startTimer()">开 始</button>
-            <button class="btn-pause" id="btnPause" onclick="pauseTimer()" disabled>暂 停</button>
-            <button class="btn-reset" id="btnReset" onclick="resetTimer()">重 置</button>
+            <button class="btn-start" id="btnStart">开 始</button>
+            <button class="btn-pause" id="btnPause" disabled>暂 停</button>
+            <button class="btn-reset" id="btnReset">重 置</button>
         </div>
 
         <div class="status" id="statusText">就绪</div>
@@ -231,21 +231,26 @@
             <canvas class="snake-canvas" id="snakeCanvas" width="400" height="400"></canvas>
             <div class="snake-info">
                 <span>得分：<span class="snake-score" id="snakeScore">0</span></span>
-                <button class="btn-snake" id="btnSnake" onclick="startSnakeGame()">开始游戏</button>
+                <button class="btn-snake" id="btnSnake">开始游戏</button>
             </div>
         </div>
         <div class="snake-hint">使用 ↑ ↓ ← → 方向键控制蛇的移动</div>
     </div>
 
     <script>
-        const TOTAL_SECONDS = 5 * 60; // 5分钟 = 300秒
-        const CIRCUMFERENCE = 2 * Math.PI * 100; // 圆周长 ≈ 628.32
+        // ──────────────────────────────────────
+        // 变量和常量定义
+        // ──────────────────────────────────────
+        const TOTAL_SECONDS = 5 * 60;          // 5分钟 = 300秒
+        const CIRCUMFERENCE = 2 * Math.PI * 100; // 圆周长 ≈ 628.32（用于进度环）
 
-        let remainingSeconds = TOTAL_SECONDS;
-        let timerInterval = null;
-        let isRunning = false;
+        let remainingSeconds = TOTAL_SECONDS;   // 剩余秒数
+        let timerInterval = null;              // 计时器的 ID（用于取消）
+        let isRunning = false;                 // 倒计时是否正在运行
 
-        // DOM 元素
+        // ──────────────────────────────────────
+        // 获取页面上需要用到的元素（缓存起来，避免反复查找 DOM）
+        // ──────────────────────────────────────
         const timerDisplay = document.getElementById('timerDisplay');
         const progressCircle = document.getElementById('progressCircle');
         const btnStart = document.getElementById('btnStart');
@@ -253,25 +258,47 @@
         const btnReset = document.getElementById('btnReset');
         const statusText = document.getElementById('statusText');
 
-        // 初始化进度环
+        // 初始化进度环样式
         progressCircle.style.strokeDasharray = CIRCUMFERENCE;
         progressCircle.style.strokeDashoffset = '0';
 
+        // 用 addEventListener 绑定按钮事件（把行为和 HTML 结构分离，更规范）
+        btnStart.addEventListener('click', startTimer);
+        btnPause.addEventListener('click', pauseTimer);
+        btnReset.addEventListener('click', resetTimer);
+
+        // ──────────────────────────────────────
+        // 倒计时模块
+        // ──────────────────────────────────────
+
+        /**
+         * 把秒数格式化成 MM:SS 的显示格式
+         * @param {number} seconds — 总秒数
+         * @returns {string} 例如 formatTime(65) → "01:05"
+         */
         function formatTime(seconds) {
             const min = Math.floor(seconds / 60);
             const sec = seconds % 60;
             return String(min).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
         }
 
+        /**
+         * 更新页面上的显示内容：时间数字 + 圆形进度环 + 颜色状态
+         * 同时根据剩余时间切换三种颜色模式：
+         *   > 60秒   → 默认红色（正常）
+         *   30~60秒  → 橙色（警告，带脉冲动画）
+         *   < 30秒   → 红色闪烁（危险）
+         */
         function updateDisplay() {
+            // 更新中间的数字（如 03:25）
             timerDisplay.textContent = formatTime(remainingSeconds);
 
-            // 更新进度环
+            // 更新外面的圆形进度环：已用时间越多，缺口越大
             const progress = remainingSeconds / TOTAL_SECONDS;
             const offset = CIRCUMFERENCE * (1 - progress);
             progressCircle.style.strokeDashoffset = offset;
 
-            // 颜色状态
+            // 清除之前的颜色状态
             timerDisplay.classList.remove('warning', 'danger');
             progressCircle.classList.remove('warning', 'danger');
 
@@ -284,6 +311,11 @@
             }
         }
 
+        /**
+         * 启动倒计时
+         * - 如果已经在跑了，不再重复启动
+         * - 如果时间已经用完（≤ 0），不允许启动
+         */
         function startTimer() {
             if (isRunning) return;
             if (remainingSeconds <= 0) return;
@@ -293,6 +325,7 @@
             btnPause.disabled = false;
             statusText.textContent = '运行中';
 
+            // 每隔 1 秒减 1，更新界面
             timerInterval = setInterval(() => {
                 remainingSeconds--;
                 updateDisplay();
@@ -304,12 +337,18 @@
             }, 1000);
         }
 
+        /**
+         * 暂停倒计时（不重置时间）
+         */
         function pauseTimer() {
             if (!isRunning) return;
             stopTimer();
             statusText.textContent = '已暂停';
         }
 
+        /**
+         * 停止计时器的内部实现：清除定时器 + 恢复按钮状态
+         */
         function stopTimer() {
             isRunning = false;
             clearInterval(timerInterval);
@@ -318,6 +357,9 @@
             btnPause.disabled = true;
         }
 
+        /**
+         * 重置倒计时：停止 → 恢复到 5分钟 → 重新显示
+         */
         function resetTimer() {
             stopTimer();
             remainingSeconds = TOTAL_SECONDS;
@@ -327,35 +369,41 @@
             statusText.textContent = '就绪';
         }
 
-        // ===== 贪吃蛇游戏 =====
+        // ──────────────────────────────────────
+        // 贪吃蛇游戏模块
+        // ──────────────────────────────────────
+
+        // 获取蛇游戏的页面上需要用到的元素
         const snakeCanvas = document.getElementById('snakeCanvas');
         const snakeCtx = snakeCanvas.getContext('2d');
         const snakeScoreEl = document.getElementById('snakeScore');
         const btnSnake = document.getElementById('btnSnake');
 
-        const GRID_SIZE = 20;        // 每格 20 像素
-        const GRID_COUNT = 20;       // 20×20 方格
-        const TICK_MS = 120;         // 蛇移动速度（毫秒）
+        const GRID_SIZE = 20;        // 每小格 20 像素（画布是 400×400，所以是 20×20 的棋盘）
+        const GRID_COUNT = 20;       // 横向和纵向各有 20 格
+        const TICK_MS = 120;         // 蛇每隔 120 毫秒移动一格（数字越小蛇越快）
 
-        let snake = [];              // 蛇的身体坐标数组
-        let food = null;             // 食物的坐标
-        let direction = null;        // 当前方向
-        let nextDirection = null;    // 缓冲的方向（防止快速按键bug）
-        let snakeInterval = null;
-        let snakeScore = 0;
-        let snakeRunning = false;
+        let snake = [];              // 蛇身体的坐标数组，第一个元素是蛇头
+        let food = null;             // 当前食物的坐标 {x, y}
+        let direction = null;        // 蛇当前移动的方向 {x, y}
+        let nextDirection = null;    // 缓冲方向：快速按两个键时，防止蛇反向撞到自己
+        let snakeInterval = null;    // 蛇移动计时器的 ID
+        let snakeScore = 0;          // 当前得分
+        let snakeRunning = false;    // 蛇是否正在移动
 
+        /**
+         * 初始化蛇的状态：放在画面中央，长度 4 格，朝右移动
+         */
         function initSnake() {
-            // 蛇初始位置：中间偏左，长度 4 格，向右移动
             const startX = Math.floor(GRID_COUNT / 2);
             const startY = Math.floor(GRID_COUNT / 2);
             snake = [
-                { x: startX, y: startY },
-                { x: startX - 1, y: startY },
-                { x: startX - 2, y: startY },
-                { x: startX - 3, y: startY },
+                { x: startX, y: startY },      // 蛇头
+                { x: startX - 1, y: startY },  // 身体第1节
+                { x: startX - 2, y: startY },  // 身体第2节
+                { x: startX - 3, y: startY },  // 蛇尾
             ];
-            direction = { x: 1, y: 0 };
+            direction = { x: 1, y: 0 };       // x=1 表示每步向右移动一格
             nextDirection = { x: 1, y: 0 };
             snakeScore = 0;
             snakeScoreEl.textContent = '0';
@@ -363,8 +411,12 @@
             drawSnake();
         }
 
+        /**
+         * 在空白格子里随机放一个食物
+         * 思路：先算出所有蛇没占据的格子，再从里面随机选一个
+         */
         function spawnFood() {
-            // 随机找一个不在蛇身上的格子
+            // 把蛇身体的坐标转成字符串集合，方便快速查找"这个格子有没有蛇"
             const occupied = new Set(snake.map(s => `${s.x},${s.y}`));
             const freeCells = [];
             for (let x = 0; x < GRID_COUNT; x++) {
@@ -374,16 +426,20 @@
                     }
                 }
             }
-            if (freeCells.length === 0) return; // 蛇占满网格，胜利
+            if (freeCells.length === 0) return; // 没有空格子了 = 玩家已通关！
             food = freeCells[Math.floor(Math.random() * freeCells.length)];
         }
 
+        /**
+         * 在画布上画出蛇 + 食物 + 网格线的一整帧画面
+         * 每次蛇移动后调用，刷新整个游戏画面
+         */
         function drawSnake() {
-            // 画背景
+            // ── 画背景：用深蓝色填充整个画布 ──
             snakeCtx.fillStyle = '#0d1b2a';
             snakeCtx.fillRect(0, 0, snakeCanvas.width, snakeCanvas.height);
 
-            // 画网格线
+            // ── 画淡淡的网格线（帮助看清格子位置）──
             snakeCtx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
             snakeCtx.lineWidth = 0.5;
             for (let i = 0; i <= GRID_COUNT; i++) {
@@ -397,7 +453,7 @@
                 snakeCtx.stroke();
             }
 
-            // 画食物
+            // ── 画食物：红色圆点，带发光效果 ──
             if (food) {
                 snakeCtx.fillStyle = '#e94560';
                 snakeCtx.shadowColor = 'rgba(233, 69, 96, 0.6)';
@@ -411,12 +467,13 @@
                     Math.PI * 2
                 );
                 snakeCtx.fill();
-                snakeCtx.shadowBlur = 0;
+                snakeCtx.shadowBlur = 0; // 画完食物后关掉发光（避免影响后面的绘制）
             }
 
-            // 画蛇身
+            // ── 画蛇身：逐格画出蛇的每一节 ──
+            // 蛇头用亮绿色（带发光），蛇身用半透明绿色
             snake.forEach((seg, i) => {
-                const alpha = i === 0 ? 1 : 0.7; // 蛇头更亮
+                const alpha = i === 0 ? 1 : 0.7;      // 蛇头 = 不透明，蛇身 = 70% 透明
                 snakeCtx.fillStyle = i === 0 ? '#4ecca3' : `rgba(78, 204, 163, ${alpha})`;
                 snakeCtx.shadowColor = i === 0 ? 'rgba(78, 204, 163, 0.5)' : 'transparent';
                 snakeCtx.shadowBlur = i === 0 ? 6 : 0;
@@ -430,87 +487,134 @@
             });
         }
 
+        /**
+         * 在画布上显示半透明蒙层 + 居中提示文字（通关和游戏结束共用）
+         * @param {string} overlayColor — 半透明蒙层的颜色（如 'rgba(78, 204, 163, 0.2)'）
+         * @param {string} textColor    — 提示文字的颜色（如 '#4ecca3'）
+         * @param {string} text         — 显示的提示文字
+         */
+        function showGameOverlay(overlayColor, textColor, text) {
+            // 画半透明蒙层，让底层蛇和食物隐约可见
+            snakeCtx.fillStyle = overlayColor;
+            snakeCtx.fillRect(0, 0, snakeCanvas.width, snakeCanvas.height);
+            // 画居中提示文字
+            snakeCtx.fillStyle = textColor;
+            snakeCtx.font = 'bold 28px "Microsoft YaHei", sans-serif';
+            snakeCtx.textAlign = 'center';
+            snakeCtx.fillText(text, snakeCanvas.width / 2, snakeCanvas.height / 2);
+        }
+
+        /**
+         * 检查蛇头是否撞墙（超出画布边界）
+         * @param {object} head — 蛇头坐标 {x, y}
+         * @returns {boolean} true = 撞了
+         */
+        function checkWallCollision(head) {
+            return head.x < 0 || head.x >= GRID_COUNT || head.y < 0 || head.y >= GRID_COUNT;
+        }
+
+        /**
+         * 检查蛇头是否撞到自己的身体
+         * @param {object} head — 蛇头坐标
+         * @param {boolean} eating — 这帧是否吃到食物（吃到的话尾巴不移走，不检查尾部）
+         * @returns {boolean} true = 撞了
+         */
+        function checkSelfCollision(head, eating) {
+            // 如果这帧不吃食物，尾巴会移走，所以排除尾巴那一格
+            const bodyToCheck = eating ? snake : snake.slice(0, -1);
+            return bodyToCheck.some(s => s.x === head.x && s.y === head.y);
+        }
+
+        /**
+         * 蛇移动一帧的核心逻辑：
+         * 1. 应用方向 → 2. 检查碰撞 → 3. 移动蛇头 → 4. 处理食物 → 5. 重绘
+         * 每一帧（120ms）调用一次
+         */
         function snakeTick() {
-            // 应用缓冲的方向
+            // 把缓冲的方向应用到当前方向
             direction.x = nextDirection.x;
             direction.y = nextDirection.y;
 
-            // 计算新蛇头位置
+            // 根据当前方向计算这一帧蛇头的新位置
             const head = snake[0];
             const newHead = {
                 x: head.x + direction.x,
                 y: head.y + direction.y,
             };
 
-            // 检查撞墙
-            if (newHead.x < 0 || newHead.x >= GRID_COUNT || newHead.y < 0 || newHead.y >= GRID_COUNT) {
+            // ── 碰撞检测：撞墙？ ──
+            if (checkWallCollision(newHead)) {
                 gameOver();
                 return;
             }
 
-            // 检查撞自己（如果这帧不吃食物，尾巴会移走，排除尾巴）
+            // ── 碰撞检测：撞到自己？ ──
             const eating = food && newHead.x === food.x && newHead.y === food.y;
-            const bodyToCheck = eating ? snake : snake.slice(0, -1);
-            if (bodyToCheck.some(s => s.x === newHead.x && s.y === newHead.y)) {
+            if (checkSelfCollision(newHead, eating)) {
                 gameOver();
                 return;
             }
 
-            // 蛇头前进
+            // ── 蛇头前进一格 ──
             snake.unshift(newHead);
 
-            // 检查是否吃到食物
+            // ── 处理食物 ──
             if (eating) {
+                // 吃到食物：加分 + 生新食物 + 尾巴不删 = 蛇变长一格
                 snakeScore++;
                 snakeScoreEl.textContent = snakeScore;
                 spawnFood();
                 if (!food) {
-                    // 网格已满，玩家获胜！
+                    // 没有空格子了 = 玩家赢了！
                     stopSnake();
-                    snakeCtx.fillStyle = 'rgba(78, 204, 163, 0.2)';
-                    snakeCtx.fillRect(0, 0, snakeCanvas.width, snakeCanvas.height);
-                    snakeCtx.fillStyle = '#4ecca3';
-                    snakeCtx.font = 'bold 28px "Microsoft YaHei", sans-serif';
-                    snakeCtx.textAlign = 'center';
-                    snakeCtx.fillText('恭喜通关！', snakeCanvas.width / 2, snakeCanvas.height / 2);
+                    showGameOverlay('rgba(78, 204, 163, 0.2)', '#4ecca3', '恭喜通关！');
                     btnSnake.textContent = '再来一局';
                     return;
                 }
-                // 食物被吃后不删尾巴 = 蛇变长
             } else {
-                snake.pop(); // 没吃到食物就删尾巴
+                // 没吃到食物：删掉尾巴 = 蛇长度不变
+                snake.pop();
             }
 
             drawSnake();
         }
 
+        /**
+         * 游戏结束：停止蛇 + 显示红色蒙层提示
+         */
         function gameOver() {
             stopSnake();
-            // 闪烁红色提示
-            snakeCtx.fillStyle = 'rgba(233, 69, 96, 0.2)';
-            snakeCtx.fillRect(0, 0, snakeCanvas.width, snakeCanvas.height);
-            snakeCtx.fillStyle = '#e94560';
-            snakeCtx.font = 'bold 28px "Microsoft YaHei", sans-serif';
-            snakeCtx.textAlign = 'center';
-            snakeCtx.fillText('游戏结束！', snakeCanvas.width / 2, snakeCanvas.height / 2);
+            showGameOverlay('rgba(233, 69, 96, 0.2)', '#e94560', '游戏结束！');
             btnSnake.textContent = '重新开始';
         }
 
+        /**
+         * 停止蛇的移动计时器
+         */
         function stopSnake() {
             clearInterval(snakeInterval);
             snakeInterval = null;
             snakeRunning = false;
         }
 
+        /**
+         * 启动蛇游戏（或重新开始）
+         */
         function startSnakeGame() {
-            stopSnake();
-            initSnake();
+            stopSnake();        // 先停掉上一局
+            initSnake();        // 初始化蛇的数据
             btnSnake.textContent = '重新开始';
             snakeRunning = true;
-            snakeInterval = setInterval(snakeTick, TICK_MS);
+            snakeInterval = setInterval(snakeTick, TICK_MS);  // 每 120ms 移动一格
         }
 
-        // 键盘控制
+        // 绑定蛇游戏的按钮事件
+        btnSnake.addEventListener('click', startSnakeGame);
+
+        // ──────────────────────────────────────
+        // 键盘控制：方向键或 WASD
+        // 用 nextDirection 做缓冲，防止在同一帧内快速按两个相反方向导致蛇撞自己
+        // ──────────────────────────────────────
         document.addEventListener('keydown', (e) => {
             if (!snakeRunning) return;
 
@@ -519,6 +623,7 @@
                 case 'ArrowUp':
                 case 'w':
                 case 'W':
+                    // 只有当前不是向下时才能向上（防止掉头）
                     if (direction.y !== 1) nextDirection = { x: 0, y: -1 };
                     break;
                 case 'ArrowDown':
@@ -539,12 +644,12 @@
                 default:
                     handled = false;
             }
-            if (handled) e.preventDefault();
+            if (handled) e.preventDefault(); // 阻止方向键滚页面
         });
 
-        // 初始画出静止的蛇
+        // 初始画出静止的蛇（动画不会跑，需要用户点击"开始游戏"）
         initSnake();
-        stopSnake(); // 确保计时器是停的，等用户点开始
+        stopSnake();
     </script>
 </body>
 </html>
